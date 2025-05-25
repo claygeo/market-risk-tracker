@@ -21,7 +21,10 @@ A dark-themed, mobile-first React application that showcases catastrophic tradin
 
 ## Screenshots
 
-![Hyper Rekt Screenshot](#) 
+![Hyper Rekt Screenshot](#) ![image](https://github.com/user-attachments/assets/ad715fc4-30af-47ac-95f6-5d698123b6c5)
+
+![image](https://github.com/user-attachments/assets/928d3a2b-a7a3-4266-bf92-99dc71cfb86b)
+
 
 ## Tech Stack
 
