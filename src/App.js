@@ -7,6 +7,9 @@ const MIN_LEVERAGE = 10;
 const MIN_LOSS_PERCENTAGE = 50;
 const MIN_POSITION_VALUE = 1000;
 
+// Popular trading pairs for discovery
+const ACTIVE_COINS = ['BTC', 'ETH', 'SOL', 'ARB', 'AVAX', 'OP', 'MATIC', 'DOGE', 'SUI', 'APT'];
+
 // Utility Functions
 const formatAddress = (address) => {
   if (!address) return '...????';
@@ -194,35 +197,89 @@ const PositionCard = ({ position }) => {
   );
 };
 
-// Main App Component
-export default function App() {
-  const [currentPosition, setCurrentPosition] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [allPositions, setAllPositions] = useState([]);
-  const [noPositionsFound, setNoPositionsFound] = useState(false);
+// Trader Discovery System
+class TraderDiscoverySystem {
+  constructor() {
+    this.knownTraders = new Set();
+    this.cache = {
+      traders: [],
+      timestamp: 0,
+      ttl: 5 * 60 * 1000 // 5 minutes
+    };
+    // Start with your known address
+    this.knownTraders.add('0xf2a6526b6b5241b0e2fe06d7f76d471a282d9a4f');
+  }
 
-  // List of well-known addresses to check (you can expand this)
-  const knownAddresses = [
-    '0xf2a6526b6b5241b0e2fe06d7f76d471a282d9a4f', // Your address
-    // Add more addresses here as you discover them
-  ];
+  // Check if cache is still valid
+  isCacheValid() {
+    return Date.now() - this.cache.timestamp < this.cache.ttl;
+  }
 
-  // Generate random addresses to check
-  const generateRandomAddresses = () => {
-    const addresses = [...knownAddresses];
-    // This is a placeholder - in production you might want to:
-    // 1. Fetch from a leaderboard endpoint
-    // 2. Parse recent trades for active addresses
-    // 3. Use a list of known active traders
-    return addresses;
-  };
+  // Get cached traders or discover new ones
+  async getTraders() {
+    if (this.isCacheValid() && this.cache.traders.length > 0) {
+      return this.cache.traders;
+    }
+    
+    const traders = await this.discoverTraders();
+    this.cache = {
+      traders: traders,
+      timestamp: Date.now(),
+      ttl: 5 * 60 * 1000
+    };
+    
+    return traders;
+  }
 
-  // Fetch user fills to find active traders
-  const fetchActiveTraders = async () => {
+  // Main discovery function
+  async discoverTraders() {
+    const newTraders = new Set(this.knownTraders);
+    
+    // Strategy 1: Recent trades from multiple coins
+    await this.discoverFromRecentTrades(newTraders);
+    
+    // Strategy 2: Try leaderboard
+    await this.discoverFromLeaderboard(newTraders);
+    
+    // Convert to array and return
+    return Array.from(newTraders);
+  }
+
+  // Discover from recent trades
+  async discoverFromRecentTrades(tradersSet) {
+    const promises = ACTIVE_COINS.slice(0, 5).map(async (coin) => {
+      try {
+        const response = await fetch(HYPERLIQUID_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'recentTrades',
+            coin: coin
+          })
+        });
+        
+        if (response.ok) {
+          const trades = await response.json();
+          if (Array.isArray(trades)) {
+            trades.forEach(trade => {
+              if (trade.user && trade.user.length === 42) {
+                tradersSet.add(trade.user);
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching ${coin} trades:`, err);
+      }
+    });
+    
+    await Promise.all(promises);
+  }
+
+  // Discover from leaderboard
+  async discoverFromLeaderboard(tradersSet) {
     try {
-      // First, let's try to get the leaderboard data
-      const leaderboardResponse = await fetch(HYPERLIQUID_API_URL, {
+      const response = await fetch(HYPERLIQUID_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -230,20 +287,33 @@ export default function App() {
           timeWindow: '1d'
         })
       });
-
-      if (leaderboardResponse.ok) {
-        const leaderboard = await leaderboardResponse.json();
-        if (leaderboard && leaderboard.length > 0) {
-          return leaderboard.map(entry => entry.user).filter(Boolean);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          data.forEach(entry => {
+            if (entry.user && entry.user.length === 42) {
+              tradersSet.add(entry.user);
+            }
+          });
         }
       }
     } catch (err) {
-      console.error('Error fetching leaderboard:', err);
+      console.error('Leaderboard fetch error:', err);
     }
+  }
+}
 
-    // Fallback to known addresses
-    return knownAddresses;
-  };
+// Create global instance
+const traderDiscovery = new TraderDiscoverySystem();
+
+// Main App Component
+export default function App() {
+  const [currentPosition, setCurrentPosition] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [allPositions, setAllPositions] = useState([]);
+  const [noPositionsFound, setNoPositionsFound] = useState(false);
 
   // Fetch positions for a single address
   const fetchUserPositions = async (userAddress) => {
@@ -317,51 +387,58 @@ export default function App() {
     setNoPositionsFound(false);
     
     try {
-      // Get list of addresses to check
-      const addresses = await fetchActiveTraders();
+      // Get traders from discovery system
+      const traders = await traderDiscovery.getTraders();
       
-      if (addresses.length === 0) {
-        throw new Error('No addresses to check. Please try again later.');
+      if (traders.length === 0) {
+        throw new Error('No traders found. Please try again later.');
       }
 
-      // Fetch positions for multiple addresses
-      const positionPromises = addresses.map(addr => fetchUserPositions(addr));
-      const results = await Promise.all(positionPromises);
+      // Shuffle traders for randomness
+      const shuffledTraders = [...traders].sort(() => Math.random() - 0.5);
       
-      // Flatten and filter valid positions
-      const disasterPositions = results
-        .filter(result => result !== null)
-        .flat()
-        .filter(pos => pos && pos.unrealizedPnl < 0);
+      // Check positions in batches to find disasters
+      const batchSize = 5;
+      const maxBatches = Math.min(4, Math.ceil(shuffledTraders.length / batchSize));
+      const disasterPositions = [];
+      
+      for (let i = 0; i < maxBatches && disasterPositions.length < 10; i++) {
+        const batch = shuffledTraders.slice(i * batchSize, (i + 1) * batchSize);
+        const promises = batch.map(addr => fetchUserPositions(addr));
+        const results = await Promise.all(promises);
+        
+        results.forEach(positions => {
+          if (positions && positions.length > 0) {
+            disasterPositions.push(...positions);
+          }
+        });
+        
+        // Small delay between batches to respect rate limits
+        if (i < maxBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
       
       if (disasterPositions.length === 0) {
-        // If no disasters found, let's create a mock one for demonstration
-        const mockPosition = {
-          user: addresses[0] || '0x0000000000000000000000000000000000000000',
-          coin: 'ETH',
-          unrealizedPnl: -15430,
-          pnlPercentage: -67.5,
-          leverage: 15,
-          positionValue: 22860,
-          liquidationDistance: 15.3,
-          entryPrice: '3450.00',
-          markPrice: '3125.50',
-          timeInPosition: '2 days 8 hours',
-          size: -6.63,
-          isLong: false
-        };
-        setCurrentPosition(mockPosition);
-        setAllPositions([mockPosition]);
+        setNoPositionsFound(true);
+        setCurrentPosition(null);
         return;
       }
 
-      // Sort by most painful (highest loss percentage)
-      disasterPositions.sort((a, b) => a.pnlPercentage - b.pnlPercentage);
+      // Sort by pain level (combination of loss % and liquidation risk)
+      disasterPositions.sort((a, b) => {
+        const aPain = Math.abs(a.pnlPercentage) * 0.7 + (100 - a.liquidationDistance) * 0.3;
+        const bPain = Math.abs(b.pnlPercentage) * 0.7 + (100 - b.liquidationDistance) * 0.3;
+        return bPain - aPain;
+      });
       
-      // Store all positions and select a random one
+      // Store all positions
       setAllPositions(disasterPositions);
-      const randomIndex = Math.floor(Math.random() * Math.min(disasterPositions.length, 10));
-      setCurrentPosition(disasterPositions[randomIndex]);
+      
+      // Select a position from the top disasters with some randomness
+      const topDisasters = Math.min(5, disasterPositions.length);
+      const selectedIndex = Math.floor(Math.random() * topDisasters);
+      setCurrentPosition(disasterPositions[selectedIndex]);
       
     } catch (err) {
       setError(err.message || 'Failed to fetch disaster positions. Please try again.');
