@@ -5,6 +5,28 @@
 
 A dark-themed, mobile-first React application that showcases catastrophic trading positions from Hyperliquid in an entertaining roulette-style interface.
 
+## Table of Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Building for Production](#building-for-production)
+- [Deployment](#deployment)
+  - [Deploy to Vercel](#deploy-to-vercel-recommended)
+  - [Deploy to Netlify](#deploy-to-netlify)
+  - [Manual Deployment](#manual-deployment)
+- [Configuration](#configuration)
+- [API Integration](#api-integration)
+- [Customization](#customization)
+  - [Styling](#styling)
+  - [Adding Features](#adding-features)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer)
+- [Acknowledgments](#acknowledgments)
+
 ## Features
 
 - **Real-time Position Discovery**: Fetches live disaster positions from Hyperliquid API
@@ -21,7 +43,7 @@ A dark-themed, mobile-first React application that showcases catastrophic tradin
 
 ## Screenshots
 
-![Hyper Rekt Screenshot](#) ![image](https://github.com/user-attachments/assets/ad715fc4-30af-47ac-95f6-5d698123b6c5)
+![image](https://github.com/user-attachments/assets/ad715fc4-30af-47ac-95f6-5d698123b6c5)
 
 ![image](https://github.com/user-attachments/assets/928d3a2b-a7a3-4266-bf92-99dc71cfb86b)
 
