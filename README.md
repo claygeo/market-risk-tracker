@@ -3,7 +3,7 @@
 
 > Witness Hyperliquid's Most Painful Trading Positions
 
-A dark-themed, mobile-first React application that showcases catastrophic trading positions from Hyperliquid in an entertaining roulette-style interface.
+Market Risk Tracker (Hyper-Rekt) is a mobile-first web application designed to monitor high-risk lending positions on Hyperliquid, a decentralized finance platform. The app provides real-time visibility into leveraged positions that are experiencing significant losses, presenting them in an engaging, roulette-style interface. Built with React and optimized for mobile devices, it features a dark theme and intuitive touch controls for seamless browsing on smartphones. Users can discover positions with leverage exceeding 10x and unrealized losses greater than 50%, with dynamic visualizations showing liquidation proximity and loss severity. The application leverages Hyperliquid's public API to fetch live position data without requiring authentication. This educational tool helps users understand the risks associated with high-leverage lending positions in decentralized finance markets.
 
 ## Table of Contents
 
