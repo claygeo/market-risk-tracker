@@ -10,6 +10,12 @@ const MIN_POSITION_VALUE = 1000;
 // Popular trading pairs for discovery
 const ACTIVE_COINS = ['BTC', 'ETH', 'SOL', 'ARB', 'AVAX', 'OP', 'MATIC', 'DOGE', 'SUI', 'APT'];
 
+// Known active addresses (you can add more as you discover them)
+const SEED_ADDRESSES = [
+  '0xf2a6526b6b5241b0e2fe06d7f76d471a282d9a4f', // Your address
+  // Add more known addresses here as you discover them
+];
+
 // Utility Functions
 const formatAddress = (address) => {
   if (!address) return '...????';
@@ -51,6 +57,16 @@ const calculateTimeInPosition = (entryTime) => {
     return `${days} day${days !== 1 ? 's' : ''} ${remainingHours} hour${remainingHours !== 1 ? 's' : ''}`;
   }
   return `${hours} hour${hours !== 1 ? 's' : ''}`;
+};
+
+// Generate mock addresses for demonstration
+const generateMockAddresses = () => {
+  const mockAddresses = [];
+  for (let i = 0; i < 20; i++) {
+    const randomHex = Math.random().toString(16).substring(2, 10);
+    mockAddresses.push(`0x${randomHex}${randomHex}${randomHex}${randomHex}${randomHex}`);
+  }
+  return mockAddresses;
 };
 
 // SpinButton Component
@@ -197,115 +213,69 @@ const PositionCard = ({ position }) => {
   );
 };
 
-// Trader Discovery System
-class TraderDiscoverySystem {
-  constructor() {
-    this.knownTraders = new Set();
-    this.cache = {
-      traders: [],
-      timestamp: 0,
-      ttl: 5 * 60 * 1000 // 5 minutes
-    };
-    // Start with your known address
-    this.knownTraders.add('0xf2a6526b6b5241b0e2fe06d7f76d471a282d9a4f');
+// Mock disaster positions for demonstration
+const MOCK_DISASTERS = [
+  {
+    user: '0x1234567890abcdef1234567890abcdef12347a3f',
+    coin: 'ETH',
+    unrealizedPnl: -125430,
+    pnlPercentage: -87.5,
+    leverage: 25,
+    positionValue: 143348,
+    liquidationDistance: 12.3,
+    entryPrice: '3850.00',
+    markPrice: '3125.50',
+    timeInPosition: '3 days 14 hours'
+  },
+  {
+    user: '0xabcdef1234567890abcdef1234567890abcd8b2e',
+    coin: 'BTC',
+    unrealizedPnl: -89234,
+    pnlPercentage: -72.1,
+    leverage: 20,
+    positionValue: 123765,
+    liquidationDistance: 8.7,
+    entryPrice: '68500.00',
+    markPrice: '45230.00',
+    timeInPosition: '1 day 7 hours'
+  },
+  {
+    user: '0x7890abcdef1234567890abcdef1234567890c4d1',
+    coin: 'SOL',
+    unrealizedPnl: -45678,
+    pnlPercentage: -94.2,
+    leverage: 50,
+    positionValue: 48502,
+    liquidationDistance: 3.2,
+    entryPrice: '185.00',
+    markPrice: '98.50',
+    timeInPosition: '18 hours'
+  },
+  {
+    user: '0xdef1234567890abcdef1234567890abcdef1f5a2',
+    coin: 'AVAX',
+    unrealizedPnl: -234567,
+    pnlPercentage: -91.8,
+    leverage: 30,
+    positionValue: 255616,
+    liquidationDistance: 5.4,
+    entryPrice: '95.00',
+    markPrice: '42.30',
+    timeInPosition: '5 days 2 hours'
+  },
+  {
+    user: '0x9876543210fedcba9876543210fedcba98765432',
+    coin: 'ARB',
+    unrealizedPnl: -67890,
+    pnlPercentage: -78.3,
+    leverage: 35,
+    positionValue: 86678,
+    liquidationDistance: 7.8,
+    entryPrice: '2.85',
+    markPrice: '1.42',
+    timeInPosition: '2 days 19 hours'
   }
-
-  // Check if cache is still valid
-  isCacheValid() {
-    return Date.now() - this.cache.timestamp < this.cache.ttl;
-  }
-
-  // Get cached traders or discover new ones
-  async getTraders() {
-    if (this.isCacheValid() && this.cache.traders.length > 0) {
-      return this.cache.traders;
-    }
-    
-    const traders = await this.discoverTraders();
-    this.cache = {
-      traders: traders,
-      timestamp: Date.now(),
-      ttl: 5 * 60 * 1000
-    };
-    
-    return traders;
-  }
-
-  // Main discovery function
-  async discoverTraders() {
-    const newTraders = new Set(this.knownTraders);
-    
-    // Strategy 1: Recent trades from multiple coins
-    await this.discoverFromRecentTrades(newTraders);
-    
-    // Strategy 2: Try leaderboard
-    await this.discoverFromLeaderboard(newTraders);
-    
-    // Convert to array and return
-    return Array.from(newTraders);
-  }
-
-  // Discover from recent trades
-  async discoverFromRecentTrades(tradersSet) {
-    const promises = ACTIVE_COINS.slice(0, 5).map(async (coin) => {
-      try {
-        const response = await fetch(HYPERLIQUID_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'recentTrades',
-            coin: coin
-          })
-        });
-        
-        if (response.ok) {
-          const trades = await response.json();
-          if (Array.isArray(trades)) {
-            trades.forEach(trade => {
-              if (trade.user && trade.user.length === 42) {
-                tradersSet.add(trade.user);
-              }
-            });
-          }
-        }
-      } catch (err) {
-        console.error(`Error fetching ${coin} trades:`, err);
-      }
-    });
-    
-    await Promise.all(promises);
-  }
-
-  // Discover from leaderboard
-  async discoverFromLeaderboard(tradersSet) {
-    try {
-      const response = await fetch(HYPERLIQUID_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'leaderboard',
-          timeWindow: '1d'
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          data.forEach(entry => {
-            if (entry.user && entry.user.length === 42) {
-              tradersSet.add(entry.user);
-            }
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Leaderboard fetch error:', err);
-    }
-  }
-}
-
-// Create global instance
-const traderDiscovery = new TraderDiscoverySystem();
+];
 
 // Main App Component
 export default function App() {
@@ -314,6 +284,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [allPositions, setAllPositions] = useState([]);
   const [noPositionsFound, setNoPositionsFound] = useState(false);
+  const [useMockData, setUseMockData] = useState(false);
 
   // Fetch positions for a single address
   const fetchUserPositions = async (userAddress) => {
@@ -387,62 +358,53 @@ export default function App() {
     setNoPositionsFound(false);
     
     try {
-      // Get traders from discovery system
-      const traders = await traderDiscovery.getTraders();
-      
-      if (traders.length === 0) {
-        throw new Error('No traders found. Please try again later.');
-      }
-
-      // Shuffle traders for randomness
-      const shuffledTraders = [...traders].sort(() => Math.random() - 0.5);
-      
-      // Check positions in batches to find disasters
-      const batchSize = 5;
-      const maxBatches = Math.min(4, Math.ceil(shuffledTraders.length / batchSize));
+      // First try with known addresses
+      const addressesToCheck = [...SEED_ADDRESSES];
       const disasterPositions = [];
       
-      for (let i = 0; i < maxBatches && disasterPositions.length < 10; i++) {
-        const batch = shuffledTraders.slice(i * batchSize, (i + 1) * batchSize);
-        const promises = batch.map(addr => fetchUserPositions(addr));
-        const results = await Promise.all(promises);
-        
-        results.forEach(positions => {
-          if (positions && positions.length > 0) {
-            disasterPositions.push(...positions);
-          }
-        });
-        
-        // Small delay between batches to respect rate limits
-        if (i < maxBatches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+      // Check known addresses first
+      for (const address of addressesToCheck) {
+        const positions = await fetchUserPositions(address);
+        if (positions && positions.length > 0) {
+          disasterPositions.push(...positions);
         }
       }
       
+      // If no real disasters found, use mock data
       if (disasterPositions.length === 0) {
-        setNoPositionsFound(true);
-        setCurrentPosition(null);
+        console.log('No real disasters found, using mock data for demonstration');
+        setUseMockData(true);
+        
+        // Randomly select from mock disasters
+        const randomIndex = Math.floor(Math.random() * MOCK_DISASTERS.length);
+        setCurrentPosition(MOCK_DISASTERS[randomIndex]);
+        setAllPositions(MOCK_DISASTERS);
         return;
       }
 
-      // Sort by pain level (combination of loss % and liquidation risk)
+      // Sort by pain level
       disasterPositions.sort((a, b) => {
         const aPain = Math.abs(a.pnlPercentage) * 0.7 + (100 - a.liquidationDistance) * 0.3;
         const bPain = Math.abs(b.pnlPercentage) * 0.7 + (100 - b.liquidationDistance) * 0.3;
         return bPain - aPain;
       });
       
-      // Store all positions
       setAllPositions(disasterPositions);
       
-      // Select a position from the top disasters with some randomness
-      const topDisasters = Math.min(5, disasterPositions.length);
-      const selectedIndex = Math.floor(Math.random() * topDisasters);
-      setCurrentPosition(disasterPositions[selectedIndex]);
+      // Select a random position from the disasters
+      const randomIndex = Math.floor(Math.random() * disasterPositions.length);
+      setCurrentPosition(disasterPositions[randomIndex]);
+      setUseMockData(false);
       
     } catch (err) {
-      setError(err.message || 'Failed to fetch disaster positions. Please try again.');
+      setError('Failed to fetch positions. Using demonstration data.');
       console.error('API Error:', err);
+      
+      // Fallback to mock data on error
+      const randomIndex = Math.floor(Math.random() * MOCK_DISASTERS.length);
+      setCurrentPosition(MOCK_DISASTERS[randomIndex]);
+      setAllPositions(MOCK_DISASTERS);
+      setUseMockData(true);
     } finally {
       setIsLoading(false);
     }
@@ -459,6 +421,11 @@ export default function App() {
           <p className="text-gray-400 text-lg">
             Witness Hyperliquid's Most Painful Positions
           </p>
+          {useMockData && (
+            <p className="text-yellow-500 text-sm mt-2">
+              Demo Mode - Add more addresses for real data
+            </p>
+          )}
         </div>
 
         {/* Spin Button */}
@@ -474,15 +441,6 @@ export default function App() {
         {error && (
           <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-4 mb-6">
             <p className="text-red-400 text-center">{error}</p>
-          </div>
-        )}
-
-        {/* No Positions Found Message */}
-        {noPositionsFound && !isLoading && (
-          <div className="bg-orange-900/20 border border-orange-500/50 rounded-xl p-4 mb-6">
-            <p className="text-orange-400 text-center">
-              No disaster positions found at the moment. The market must be doing well! Try again later.
-            </p>
           </div>
         )}
 
@@ -507,7 +465,7 @@ export default function App() {
         {allPositions.length > 0 && !isLoading && (
           <div className="mt-6 text-center">
             <p className="text-gray-600 text-sm">
-              Found {allPositions.length} disaster position{allPositions.length !== 1 ? 's' : ''}
+              {useMockData ? 'Showing demo disasters' : `Found ${allPositions.length} disaster position${allPositions.length !== 1 ? 's' : ''}`}
             </p>
           </div>
         )}
